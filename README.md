@@ -4,4 +4,4 @@
 
 **一个前端开发者，记录前端开发的一些笔记，共勉。**
 
-** [文档](https://haomingi.github.io/) ** 
+[文档](https://haomingi.github.io/)
