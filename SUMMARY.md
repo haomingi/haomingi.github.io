@@ -8,7 +8,7 @@ ES6
 * [javaScript基础](./docs/js/index.md)
     * [基础内容](./docs/js/base.md)
 * [ES6](./docs/es6/index.md)
-    * [基础内容](./docs/es6/base.md)
+    * [箭头函数](./docs/es6/base.md)
 * [vue](./docs/vue/index.md)
     * [基础内容](./docs/vue/base.md)
 * [react](./docs/react/index.md)
