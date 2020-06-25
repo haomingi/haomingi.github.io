@@ -8,8 +8,11 @@ node -v
 yarn -v/npm -v
 
 # 安装全局命令
-yarn global add gitbook/npm install gitbook -g
-yarn global add gitbook-cli/npm install gitbook-cli -g
+yarn global add gitbook
+yarn global add gitbook-cli
+或者
+npm install gitbook -g
+npm install gitbook-cli -g
 
 # 查看是否安装成功
 gitbook -V
