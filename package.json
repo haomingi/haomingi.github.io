@@ -1,6 +1,6 @@
 {
-  "name": "jsnotes",
-  "version": "0.0.1",
+  "name": "myGitbook",
+  "version": "111.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "upload": "gitbook build && tar cjf ios.tar _book && gulp"
   },
   "keywords": [],
-  "author": "",
+  "author": "haoming",
   "license": "ISC",
   "devDependencies": {
     "gulp": "^3.9.1",
