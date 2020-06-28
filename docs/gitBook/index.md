@@ -26,3 +26,7 @@ gitbook serve 本地启动
 # 构建静态页面
 gitbook build 打包
 ```
+
+## Gitbook上传github
+
+在develop开发，build完成之后把_book目录拷贝到master分支，全部覆盖

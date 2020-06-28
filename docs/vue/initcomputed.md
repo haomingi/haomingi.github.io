@@ -46,13 +46,13 @@ function initComputed (vm: Component, computed: Object) {
 }
 ```
 # 包装回调函数
-**此处显示使用computedWatcherOptions定义了一个lazy字段，此字段用在创建watch时候，进行代码状态的区分！**
+**此处使用computedWatcherOptions定义了一个lazy字段，此字段用在创建watch时候，进行代码状态的区分！**
 
 - 判断_computedWatchers函数是否存在，不存在了创建，存入vm中。
 - 循环computed，拿到key/userDef。
 - 判断是否服务端渲染。
 - 根据key/userDef/computedWatcherOptions，创建watcher实例，存入vm._computedWatchers对象中。
-- 判断计算属性key是否与props/data命名冲突，目的是此处会在vm上创建一个以计算属性名称一致的字段，用以保存计算属性计算值（快照）。第一次计算属性计算完成之后，不发生改变的情况下，之后的renderWatcher渲染时候都从此处取值，不会从新调用计算属性函数计算结果。
+- 判断计算属性key是否与props/data命名冲突，目的是此处会在vm上创建一个以计算属性名称一致的字段，用以保存计算属性计算值（快照）。第一次计算属性计算完成之后，不发生改变的情况下，之后的renderWatcher渲染时候都从此处取值，不会从新调用计算属性函数计算结果（watch.value）。
 
 **此处watcher创建有不同之处！**
 
@@ -137,7 +137,7 @@ export function popTarget () {
 ```
 **此时需要注意！**
 
-当前computedGetter运行是因为renderWatcher在进行取数，所以在computedGetter运行前，Dep.target=renderWatcher，renderWatcher备份存储在==targetStack==中，computedGetter运行后，使用计算属性watch替换了Dep.target，targetStack中就存储了两个watcher[renderWatcher, 计算属性watch]
+当前computedGetter运行是因为renderWatcher在进行取数，所以在computedGetter运行前，Dep.target=renderWatcher，renderWatcher备份存储在**targetStack**中，computedGetter运行后，使用计算属性watch替换了Dep.target，targetStack中就存储了两个watcher[renderWatcher, 计算属性watch]
 
 popTarget函数调用，移除了计算属性watch，同时把renderWatcher赋值给Dep.target
 
@@ -150,7 +150,11 @@ if (Dep.target) {
 ```
 此处Dep.target等于renderWatcher，取到计算属性watcher依赖的deps，与当前Dep.targt（renderWatcher），建立依赖关系！！！
 
-因此！此处进行了两次watcher依赖绑定。计算属性使用的字段与计算属性watch绑定，计算属性使用的字段与renderWatcher，当字段发生改变时候，根据存储的watcher先后顺序，先通知计算属性watch，在通知renderWatcher。
+因此！此处进行了两次watcher依赖绑定。
+- 计算属性使用的字段与计算属性watch绑定
+- 计算属性使用的字段与renderWatcher
+
+当字段发生改变时候，根据存储的watcher先后顺序，先通知计算属性watch，在通知renderWatcher。
 
 
 ```
@@ -166,10 +170,14 @@ update () {
   }
 ```
 字段deps通知watch，会判断this.lazy，把当前计算属性watch的dirty更改，使其重新计算结果。
-# example
-当组件中先使用了a变量，之后才有计算属性也是有a变量，根据先后顺序，是a变量先跟renderWatcher建立依赖，然后renderWatcher取数到计算属性的时候，a与计算属性建立依赖。
 
-那么当a发生数据改变的时候，也是根据先后顺序触发renderWatcher、计算属性watcher。
+### **注意！**
+此处通过lazy区分了不同的逻辑，计算属性的wathcer不会被放入到queue队列中去。
+
+# example
+当template中先使用了a变量，之后使用的计算属性钟也使用了a变量，根据先后顺序，是a变量先跟renderWatcher建立依赖，然后renderWatcher取数到计算属性的时候，a与计算属性建立依赖。
+
+**理论上**，那么当a发生数据改变的时候，也是根据先后顺序触发renderWatcher、计算属性watcher（看上方注意的那句话）。
 
 ```
 export function queueWatcher (watcher: Watcher) {
@@ -210,12 +218,27 @@ while (i > index && queue[i].id > watcher.id) {
   }
 ```
 会判断当前已存储queue[i].id与当次存入watcher.id的大小，找到存储watch的位置，id小的放到前面去先调用。
-- watch、计算属性、renderWatcher，以上三个都触发的时候，运行顺序。
+- watch、renderWatcher、计算属性，以上三个都触发的时候，运行顺序。
 - 计算属性watch最先创建、watch、renderWatcher
 - 计算属性watch创建之后没有与数据绑定，最先绑定的是watch
-- 创建的字段在三个watcher中都使用的时候，如果根据例子的顺序，字段deps[watch, renderWatcher, 计算属性watch]
+- 某个字段在三个watcher中都使用的时候，如果根据例子的顺序，字段deps[watch, renderWatcher, 计算属性watch]
 - flushSchedulerQueue函数会对维护的queue排序，queue.sort((a, b) => a.id - b.id)
 - 排序之后计算属性在前，之后是watch，最后是renderWatcher
 
-遗留问题：
-排序之后计算属性watch在最前面，因为id最小，但是实际运行时候watch最先走！
+**看watch.update函数**
+
+```
+update () {
+    /* istanbul ignore else */
+    if (this.lazy) {
+      this.dirty = true
+    } else if (this.sync) {
+      this.run()
+    } else {
+      queueWatcher(this)
+    }
+  }
+```
+
+当实际的watch被循环调用的时候，计算属性的watch没有被放入到queue中去，只是更改了dirty字段，所以实际运行的是(watch,renderWatch)两个watch，当renderWatch运行的时候，会调用计算属性，计算属性的dirty为true，从新计算！
+
